@@ -73,17 +73,19 @@ class UserModel extends BaseModel {
      * @param $input
      * @return mixed
      */
-    public function insertUser($input) {
-        $name = $data['name'] ?? '';
-        $fullname = $data['fullname'] ?? '';
-        $email = $data['email'] ?? '';
-        $type = $data['type'] ?? 'user';
-        $password = $data['password'] ?? '';
+    public function insertUser($data) {
+    $name = $data['name'] ?? '';
+    $fullname = $data['fullname'] ?? '';
+    $email = $data['email'] ?? '';
+    $type = $data['type'] ?? 'user';
+    $password = $data['password'] ?? '';
 
-        $sql = "INSERT INTO users (name, fullname, email, type, password)
-                VALUES ('$name', '$fullname', '$email', '$type', '$password')";
-        return $this->insert($sql);
-    }
+    $sql = "INSERT INTO users (name, fullname, email, type, password)
+            VALUES ('$name', '$fullname', '$email', '$type', '$password')";
+
+    return $this->insert($sql);
+}
+
 
     /**
      * Search users

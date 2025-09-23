@@ -18,7 +18,9 @@ if (!empty($_POST['submit'])) {
     } else {
         $userModel->insertUser($_POST);
     }
+    // Chuyển về danh sách
     header('location: list_users.php');
+    exit;
 }
 ?>
 <!DOCTYPE html>
@@ -34,7 +36,7 @@ if (!empty($_POST['submit'])) {
             <div class="alert alert-warning" role="alert">
                 User form
             </div>
-            <form method="POST">
+            <form method="POST" id="userForm">
                 <input type="hidden" name="id" value="<?php echo $_id ?>">
                 
                 <div class="form-group">
@@ -68,46 +70,48 @@ if (!empty($_POST['submit'])) {
                     <input type="password" name="password" class="form-control" placeholder="Password">
                 </div>
 
+                <!-- Submit chính -->
                 <button type="submit" name="submit" value="submit" class="btn btn-primary">Submit</button>
             </form>
+
+            <!-- Nút Sync để gửi dữ liệu localStorage lên Redis -->
+            <button onclick="syncToServer()">Sync to Server (Redis)</button>
         <?php } else { ?>
             <div class="alert alert-success" role="alert">
                 User not found!
             </div>
         <?php } ?>
     </div>
+
+    <script>
+    // Khi submit form: vừa gửi tới server PHP vừa lưu vào localStorage
+    document.getElementById("userForm").addEventListener("submit", function() {
+        const userData = {
+            name: this.name.value,
+            fullname: this.fullname.value,
+            email: this.email.value,
+            type: this.type.value,
+            password: this.password.value
+        };
+
+        localStorage.setItem("user", JSON.stringify(userData));
+        console.log("✅ Lưu localStorage:", userData);
+    });
+
+    // Hàm sync lên Redis qua PHP
+    function syncToServer() {
+        const userData = JSON.parse(localStorage.getItem("user"));
+        if (!userData) return alert("⚠️ Chưa có user trong localStorage");
+
+        fetch("save_to_redis.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(userData)
+        })
+        .then(res => res.text())
+        .then(data => console.log("Server response:", data))
+        .catch(err => console.error(err));
+    }
+    </script>
 </body>
-<script>
-// Khi submit form
-document.querySelector("form").addEventListener("submit", function(e) {
-    const userData = {
-        name: document.querySelector("[name='name']").value,
-        fullname: document.querySelector("[name='fullname']").value,
-        email: document.querySelector("[name='email']").value,
-        type: document.querySelector("[name='type']").value,
-        password: document.querySelector("[name='password']").value
-    };
-
-    // Lưu vào localStorage (dữ liệu tạm trên browser)
-    localStorage.setItem("user", JSON.stringify(userData));
-
-    console.log("✅ Lưu localStorage:", userData);
-});
-function syncToServer() {
-    const userData = JSON.parse(localStorage.getItem("user"));
-    if (!userData) return;
-
-    fetch("save_to_redis.php", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(userData)
-    })
-    .then(res => res.text())
-    .then(data => console.log("Server response:", data))
-    .catch(err => console.error(err));
-}
-
-<button onclick="syncToServer()">Sync to Server (Redis)</button>
-
-</script>
 </html>
