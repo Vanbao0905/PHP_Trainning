@@ -48,16 +48,25 @@ class UserModel extends BaseModel {
      * @param $input
      * @return mixed
      */
-    public function updateUser($input) {
-        $sql = 'UPDATE users SET 
-                 name = "' . mysqli_real_escape_string(self::$_connection, $input['name']) .'", 
-                 password="'. md5($input['password']) .'"
-                WHERE id = ' . $input['id'];
+    public function updateUser($data) {
+        $id = (int)$data['id'];
+        $name = $data['name'] ?? '';
+        $fullname = $data['fullname'] ?? '';
+        $email = $data['email'] ?? '';
+        $type = $data['type'] ?? 'user';
+        $password = $data['password'] ?? '';
 
-        $user = $this->update($sql);
+        $sql = "UPDATE users 
+            SET name='$name', fullname='$fullname', email='$email', type='$type'";
 
-        return $user;
+        if (!empty($password)) {
+            $sql .= ", password='$password'";
+        }
+        $sql .= " WHERE id=$id";
+
+        return $this->update($sql);
     }
+
 
     /**
      * Insert user
@@ -65,12 +74,15 @@ class UserModel extends BaseModel {
      * @return mixed
      */
     public function insertUser($input) {
-        $sql = "INSERT INTO `app_web1`.`users` (`name`, `password`) VALUES (" .
-                "'" . $input['name'] . "', '".md5($input['password'])."')";
+        $name = $data['name'] ?? '';
+        $fullname = $data['fullname'] ?? '';
+        $email = $data['email'] ?? '';
+        $type = $data['type'] ?? 'user';
+        $password = $data['password'] ?? '';
 
-        $user = $this->insert($sql);
-
-        return $user;
+        $sql = "INSERT INTO users (name, fullname, email, type, password)
+                VALUES ('$name', '$fullname', '$email', '$type', '$password')";
+        return $this->insert($sql);
     }
 
     /**

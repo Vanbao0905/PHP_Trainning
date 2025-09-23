@@ -36,17 +36,23 @@
       environment:
         MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
         MYSQL_DATABASE: ${DB_DATABASE}
-        MYSQL_USER: ${DB_USERNAME}
-        MYSQL_PASSWORD: ${DB_PASSWORD}
         MYSQL_ALLOW_EMPTY_PASSWORD: 1
 
     phpmyadmin:
-      container_name: phpmyadmin
       image: phpmyadmin/phpmyadmin
+      container_name: phpmyadmin
       ports:
         - "8081:80"
       environment:
-        PMA_HOST: web-mysql
-        MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+        PMA_HOST: db
+        PMA_USER: root
+        PMA_PASSWORD: 123456
       depends_on:
         - db
+    redis:
+      image: redis:7
+      container_name: web-redis
+      ports:
+        - "6379:6379"
+
+
