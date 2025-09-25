@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
     <?php include 'views/header.php'?>
     <div class="container">
-        <?php if ($user || !isset($_id)) { ?>
+        <?php if ($user || empty($_id)) { ?>
             <div class="alert alert-warning" role="alert">User form</div>
 
             <form method="POST" id="userForm">
@@ -97,65 +97,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <script>
-    // Wait DOM loaded
     document.addEventListener('DOMContentLoaded', function () {
-        const form = document.getElementById('userForm');
-        if (!form) return;
+  const form = document.getElementById('userForm');
+  if (!form) return;
 
-        form.addEventListener('submit', function (e) {
-            // Note: we do NOT call e.preventDefault() here so the form will submit normally
-            // to this PHP page (so DB insert/update still happens). We also send an async
-            // fetch to save_to_redis.php to keep Redis in sync.
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    // build a safe payload: DO NOT include password
+    const userData = {
+      name: form.elements['name'].value,
+      fullname: form.elements['fullname'].value,
+      email: form.elements['email'].value,
+      type: form.elements['type'].value,
+      id: form.elements['id'] ? form.elements['id'].value : ''
+    };
 
-            // Collect user data from form
-            const userData = {
-                name: this.name.value,
-                fullname: this.fullname.value,
-                email: this.email.value,
-                type: this.type.value,
-                password: this.password.value,
-                // include id if present (useful)
-                id: this.id ? this.id.value : ''
-            };
+    const token = (document.querySelector('input[name="csrf_token"]') || {}).value || '';
 
-            // Get token dynamically from hidden input
-            const tokenInput = document.querySelector('input[name="csrf_token"]');
-            const token = tokenInput ? tokenInput.value : '';
+    // send small payload, allow browser to keepalive during navigation
+    try {
+      fetch('save_to_redis.php', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': token
+        },
+        body: JSON.stringify(userData),
+        keepalive: true
+      }).catch(err => console.warn('Redis sync (fire-and-forget) failed', err));
+    } catch (err) {
+      console.warn('Fetch error', err);
+    }
 
-            // Save to localStorage (optional)
-            try {
-                localStorage.setItem("user", JSON.stringify(userData));
-                console.log("✅ Lưu localStorage:", userData);
-            } catch (err) {
-                console.warn('LocalStorage save failed', err);
-            }
+    // allow normal form submission to continue
+  });
+});
 
-            // Send async request to save_to_redis.php
-            // Important: include credentials so session cookie is sent (server reads $_SESSION)
-            fetch("save_to_redis.php", {
-                method: "POST",
-                credentials: "same-origin", // send cookie for same origin
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRF-Token": token
-                },
-                body: JSON.stringify(userData)
-            })
-            .then(response => response.json().catch(() => null))
-            .then(json => {
-                if (json) {
-                    console.log("save_to_redis response:", json);
-                } else {
-                    console.log("save_to_redis: non-json response or empty");
-                }
-            })
-            .catch(err => {
-                console.error("save_to_redis fetch error:", err);
-            });
-
-            // Let the normal form submit continue (do not preventDefault)
-        });
-    });
     </script>
 </body>
 </html>

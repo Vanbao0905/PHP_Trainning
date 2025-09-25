@@ -17,6 +17,10 @@ $data = json_decode($raw, true);
 if (empty($clientToken) && is_array($data)) {
     $clientToken = $data['csrf_token'] ?? null;
 }
+// remove password before saving to redis
+if (isset($toSave['password'])) {
+    unset($toSave['password']);
+}
 
 // Validate CSRF token
 if (empty($_SESSION['csrf_token']) || empty($clientToken) || !hash_equals($_SESSION['csrf_token'], (string)$clientToken)) {
