@@ -1,1 +1,1 @@
-{"virtualbox":{"/vagrant":{"guestpath":"/vagrant","hostpath":"D:/Bài Tập/BT1/PHP_Trainning/sources","disabled":false,"__vagrantfile":true}}}
+{"virtualbox":{"/home/vagrant/sources":{"guestpath":"/home/vagrant/sources","hostpath":"D:/Bài Tập/BT1/PHP_Trainning/sources","disabled":false,"__vagrantfile":true},"/vagrant":{"guestpath":"/vagrant","hostpath":"D:/Bài Tập/BT1/PHP_Trainning","disabled":false,"__vagrantfile":true}}}
