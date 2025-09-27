@@ -1,114 +1,100 @@
 <?php
-
 require_once 'BaseModel.php';
 
-class UserModel extends BaseModel {
-
-    public function findUserById($id) {
-        $sql = 'SELECT * FROM users WHERE id = '.$id;
-        $user = $this->select($sql);
-
-        return $user;
+class UserModel extends BaseModel
+{
+    public function findUserById($id)
+    {
+        $sql = "SELECT id, name, fullname, email, type 
+                FROM users WHERE id = :id LIMIT 1";
+        $stmt = self::$_connection->prepare($sql);
+        $stmt->execute([':id' => (int)$id]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    public function findUser($keyword) {
-        $sql = 'SELECT * FROM users WHERE user_name LIKE %'.$keyword.'%'. ' OR user_email LIKE %'.$keyword.'%';
-        $user = $this->select($sql);
-
-        return $user;
+    public function findUser($keyword)
+    {
+        $sql = "SELECT id, name, fullname, email, type 
+                FROM users WHERE name LIKE :kw OR email LIKE :kw";
+        $stmt = self::$_connection->prepare($sql);
+        $stmt->execute([':kw' => "%{$keyword}%"]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    /**
-     * Authentication user
-     * @param $userName
-     * @param $password
-     * @return array
-     */
-    public function auth($userName, $password) {
-        $md5Password = md5($password);
-        $sql = 'SELECT * FROM users WHERE name = "' . $userName . '" AND password = "'.$md5Password.'"';
+    public function auth($userName, $password)
+    {
+        $sql = "SELECT id, name, fullname, email, type, password 
+                FROM users WHERE name = :name LIMIT 1";
+        $stmt = self::$_connection->prepare($sql);
+        $stmt->execute([':name' => $userName]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        $user = $this->select($sql);
-        return $user;
-    }
-
-    /**
-     * Delete user by id
-     * @param $id
-     * @return mixed
-     */
-    public function deleteUserById($id) {
-        $sql = 'DELETE FROM users WHERE id = '.$id;
-        return $this->delete($sql);
-
-    }
-
-    /**
-     * Update user
-     * @param $input
-     * @return mixed
-     */
-    public function updateUser($data) {
-        $id = (int)$data['id'];
-        $name = $data['name'] ?? '';
-        $fullname = $data['fullname'] ?? '';
-        $email = $data['email'] ?? '';
-        $type = $data['type'] ?? 'user';
-        $password = $data['password'] ?? '';
-
-        $sql = "UPDATE users 
-            SET name='$name', fullname='$fullname', email='$email', type='$type'";
-
-        if (!empty($password)) {
-            $sql .= ", password='$password'";
+        if ($user && password_verify($password, $user['password'])) {
+            unset($user['password']); // không trả hash về
+            return $user;
         }
-        $sql .= " WHERE id=$id";
-
-        return $this->update($sql);
+        return null;
     }
 
+    public function deleteUserById($id)
+    {
+        $sql = "DELETE FROM users WHERE id = :id";
+        $stmt = self::$_connection->prepare($sql);
+        return $stmt->execute([':id' => (int)$id]);
+    }
 
-    /**
-     * Insert user
-     * @param $input
-     * @return mixed
-     */
-    public function insertUser($data) {
-    $name = $data['name'] ?? '';
-    $fullname = $data['fullname'] ?? '';
-    $email = $data['email'] ?? '';
-    $type = $data['type'] ?? 'user';
-    $password = $data['password'] ?? '';
+    public function updateUser($data) {
+    $sql = "UPDATE users 
+               SET name = :name, fullname = :fullname, email = :email, type = :type";
+    $params = [
+        ':name' => $data['name'],
+        ':fullname' => $data['fullname'],
+        ':email' => $data['email'],
+        ':type' => $data['type'],
+        ':id' => (int)$data['id']
+    ];
 
-    $sql = "INSERT INTO users (name, fullname, email, type, password)
-            VALUES ('$name', '$fullname', '$email', '$type', '$password')";
+    if (!empty($data['password'])) {
+        $sql .= ", password = :password";
+        $params[':password'] = password_hash($data['password'], PASSWORD_DEFAULT);
+    }
 
-    return $this->insert($sql);
+    $sql .= " WHERE id = :id";
+    $stmt = self::$_connection->prepare($sql);
+    return $stmt->execute($params);
 }
 
 
-    /**
-     * Search users
-     * @param array $params
-     * @return array
-     */
-    public function getUsers($params = []) {
-        //Keyword
+    public function insertUser($data) {
+    if (empty($data['password'])) {
+        throw new Exception("Password is required for new users");
+    }
+
+    $sql = "INSERT INTO users (name, fullname, email, type, password)
+            VALUES (:name, :fullname, :email, :type, :password)";
+    $stmt = self::$_connection->prepare($sql);
+    $stmt->execute([
+        ':name' => $data['name'],
+        ':fullname' => $data['fullname'],
+        ':email' => $data['email'],
+        ':type' => $data['type'],
+        ':password' => password_hash($data['password'], PASSWORD_DEFAULT)
+    ]);
+    return self::$_connection->lastInsertId();
+}
+
+
+    public function getUsers($params = [])
+    {
         if (!empty($params['keyword'])) {
-            $sql = 'SELECT * FROM users WHERE name LIKE "%' . $params['keyword'] .'%"';
-
-            //Keep this line to use Sql Injection
-            //Don't change
-            //Example keyword: abcef%";TRUNCATE banks;##
-            $users = self::$_connection->multi_query($sql);
-
-            //Get data
-            $users = $this->query($sql);
+            $sql = "SELECT id, name, fullname, email, type 
+                      FROM users WHERE name LIKE :kw OR email LIKE :kw";
+            $stmt = self::$_connection->prepare($sql);
+            $stmt->execute([':kw' => "%{$params['keyword']}%"]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } else {
-            $sql = 'SELECT * FROM users';
-            $users = $this->select($sql);
+            $sql = "SELECT id, name, fullname, email, type FROM users";
+            return self::$_connection->query($sql)->fetchAll(PDO::FETCH_ASSOC);
         }
-
-        return $users;
     }
 }

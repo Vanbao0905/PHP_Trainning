@@ -2,73 +2,65 @@
 require_once 'configs/database.php';
 
 abstract class BaseModel {
-    // Database connection
+    // PDO connection
     protected static $_connection;
 
     public function __construct() {
-
         if (!isset(self::$_connection)) {
-            self::$_connection = mysqli_connect(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, DB_PORT);
-            if (self::$_connection->connect_errno) {
-                printf("Connect failed");
-                exit();
+            try {
+                self::$_connection = new PDO(
+                    "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";port=" . DB_PORT . ";charset=utf8mb4",
+                    DB_USER,
+                    DB_PASSWORD,
+                    [
+                        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+                    ]
+                );
+            } catch (PDOException $e) {
+                die("Database connection failed: " . $e->getMessage());
             }
         }
-
     }
 
     /**
-     * Query in database
-     * @param $sql
+     * Query raw SQL (not recommended unless safe)
      */
-    protected function query($sql) {
-
-        $result = self::$_connection->query($sql);
-        return $result;
+    protected function query($sql, $params = []) {
+        $stmt = self::$_connection->prepare($sql);
+        $stmt->execute($params);
+        return $stmt;
     }
 
     /**
      * Select statement
-     * @param $sql
      */
-    protected function select($sql) {
-        $result = $this->query($sql);
-        $rows = [];
-        if (!empty($result)) {
-            while ($row = $result->fetch_assoc()) {
-                $rows[] = $row;
-            }
-        }
-        return $rows;
+    protected function select($sql, $params = []) {
+        $stmt = $this->query($sql, $params);
+        return $stmt->fetchAll();
     }
 
     /**
      * Delete statement
-     * @param $sql
-     * @return mixed
      */
-    protected function delete($sql) {
-        $result = $this->query($sql);
-        return $result;
+    protected function delete($sql, $params = []) {
+        $stmt = $this->query($sql, $params);
+        return $stmt->rowCount();
     }
 
     /**
      * Update statement
-     * @param $sql
-     * @return mixed
      */
-    protected function update($sql) {
-        $result = $this->query($sql);
-        return $result;
+    protected function update($sql, $params = []) {
+        $stmt = $this->query($sql, $params);
+        return $stmt->rowCount();
     }
 
     /**
      * Insert statement
-     * @param $sql
      */
-    protected function insert($sql) {
-        $result = $this->query($sql);
-        return $result;
+    protected function insert($sql, $params = []) {
+        $stmt = $this->query($sql, $params);
+        return self::$_connection->lastInsertId();
     }
-
 }
